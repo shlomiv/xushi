@@ -1,4 +1,4 @@
 xushi
 =====
 
-an attempt at implementing an async, distributed prefix map, based on XUS
+an attempt at implementing an async prefix map in scala (over sockets), based on XUS
