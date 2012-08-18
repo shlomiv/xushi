@@ -28,7 +28,7 @@ class AsyncStore[A] {
   protected def onKeyPath(scanner: (String, Node) => Option[Node])(fn: (Node, String) => Unit, pfn: (Node, String, List[String]) => Unit)(key: List[String], node: Node): Unit = key match {
     case key :: Nil => scanner(key, node).foreach(fn(_, key))
     case key :: rest => {
-      scanner(key, node).foreach((n) => {
+      scanner(key, node).foreach(n=> {
         onKeyPath(scanner)(fn, pfn)(rest, n)
         pfn(n, key, rest)
       })
@@ -56,14 +56,14 @@ class AsyncStore[A] {
       leaf.v = None
       notifyChange(fullKey, leaf.v, leaf)
     }, (node, key, rest) => {
-      finder(rest.head, node).foreach((c) => if (c.v.isEmpty && c.childs.isEmpty && c.listeners.isEmpty) node.childs -= c)
+      finder(rest.head, node).foreach(c=> if (c.v.isEmpty && c.childs.isEmpty && c.listeners.isEmpty) node.childs -= c)
       notifyChange(fullKey, None, node)
     })(key, node)
 
   // notify listener about all non-None sub-keys
   protected def notifyDownwards(listener: Node, node: Node, keyPrefix: String): Unit = {
     if (node.v != None) notifyChange(keyPrefix, node.v, listener)
-    node.childs.foreach((c) => notifyDownwards(listener, c, keyPrefix + "." + c.key))
+    node.childs.foreach(c=>notifyDownwards(listener, c, keyPrefix + "." + c.key))
   }
 
   // registers a listener on fullKey, calling it with all existing info if update is set
@@ -74,9 +74,9 @@ class AsyncStore[A] {
         findKey(key).foreach(_.listeners -= Left(effect))
         stopMap = stopMap - effect
       })
-      leaf.childs.foreach((c) => {})
+      leaf.childs.foreach(_=>{})
       if (update) notifyDownwards(leaf, leaf, fullKey)
-    }, (node, key, rest) => {})(key, node)
+    }, (_,_,_)=>{})(key, node)
     effect
   }
 
@@ -87,8 +87,8 @@ class AsyncStore[A] {
         findKey(key).foreach(_.listeners -= Right(effect))
         stopMap = stopMap - effect
       })
-      leaf.childs.foreach((c) => {})
-    }, (node, key, rest) => {})(key, node)
+      leaf.childs.foreach(_=>{})
+    }, (_,_,_)=>{})(key, node)
     effect
   }
   
