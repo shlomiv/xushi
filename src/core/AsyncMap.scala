@@ -1,4 +1,5 @@
 package core
+
 import scala.collection.mutable.{HashSet, Set}
 import scala.collection.immutable.HashMap
 
@@ -133,23 +134,26 @@ object tester {
 
     val g = new AsyncMap[Int]
 
-    val e1 = g.onChange("ass.hole", (key, v) => println("2 change on asshole " + key + " " + v))
+    val e1 = g.onChange("store.shelf", (key, v) => println("change on shelf: " + key + " " + v))
 
-    g.put("ass", 4)
-    g.put("ass.hole.big", 7)
+    g.put("store", 4)
+    g.put("store.shelf.top", 7)
 
-    val e = g.onChange("ass", (key, v) => println("1 change on ass " + key + " " + v))
+    val storeListener = g.onChange("store", (key, v) => println("change on store: " + key + " " + v))
 
-    //g.del("ass.hole.big")
-    //g.del("ass.1.2.3")
-    g.onBatch("ass.1", (l)=>l.foreach(println))
-    g.batch("ass.1").put("ass.1.2.3", 2).del("ass.1.2.3").commit
+    g.del("store.closet")
+    
+    g.onBatch("store", (l)=>println (l.foldLeft("batch : \n")(_+"\t"+_.toString + "\n")))
+    
+    g.put("store.shelf.top.1", 100)
+    
+    g.batch("store")
+       .put("store.room.1", 2)
+       .del("store.room.1")
+       .commit
 
-    //println (g.findKey("ass.1.2.3").get.v)
-    g.stop(e)
-
-    g.del("ass.hole.big.jkj")
-
-    g.put("ass", 6)
+    g.stop(storeListener)
+    
+    g.put("store", 6)
   }
 }
