@@ -3,7 +3,7 @@ package core
 import scala.collection.mutable.{HashSet, Set}
 import scala.collection.immutable.HashMap
 
-class AsyncMap[A] {
+class AsyncStore[A] {
   protected class Node(val key: String, var v: Option[A], var childs: Set[Node], var listeners: Set[Either[(String, Option[A]) => Unit, (List[(String, Option[A], Op)])=>Unit]]);
   
   protected val root = new Node("", None, HashSet(), HashSet())
@@ -92,7 +92,7 @@ class AsyncMap[A] {
     effect
   }
   
-  class Batch(val fullKey:String, val g:AsyncMap[A]) {
+  class Batch(val fullKey:String, val g:AsyncStore[A]) {
     var actions:List[(String, Option[A], Op)] = List()
     def put(key:String, v:A) = {
       actions = (key, Some(v), Add()) :: actions
@@ -132,7 +132,7 @@ object tester {
 
   def main(args: Array[String]) {
 
-    val g = new AsyncMap[Int]
+    val g = new AsyncStore[Int]
 
     val e1 = g.onChange("store.shelf", (key, v) => println("change on shelf: " + key + " " + v))
 
@@ -149,11 +149,12 @@ object tester {
     
     g.batch("store")
        .put("store.room.1", 2)
+       .put("store.shelf.top.middle", 10)
        .del("store.room.1")
        .commit
 
     g.stop(storeListener)
     
-    g.put("store", 6)
+    g.put("store.shelf", 6)
   }
 }
