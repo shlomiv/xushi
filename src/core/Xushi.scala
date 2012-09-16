@@ -11,10 +11,7 @@ class Xushi {
 
   def diceKey(key:String)=key.split("\\.").inits.filterNot(_.isEmpty).map((x) => x reduce (_.concat(".") ++ _)).toStream.reverse
   
-  def interested(key: String) = {
-    val diced = diceKey(key)
-    peers.filter((p) => diced.exists(p._2.contains(_))).map(_._1)
-  }
+  def interested(key: String) = peers.filter((p) => diceKey(key).exists(p._2.contains(_))).map(_._1)
 
   def add(key: String, v: Any) = {
     diceKey(key).foreach((mk)=> store.get(mk).getOrElse{store = store + ((mk, None))})
@@ -66,9 +63,6 @@ class Xushi {
       }
     })
   }
-
-  //def onChange(key:String, e:(String, Any)=>Unit) = null
-
 }
 
 
