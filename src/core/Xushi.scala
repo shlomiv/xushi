@@ -29,9 +29,9 @@ class Xushi {
     }
   } 
     
-  val getAllItemsFromStore = (key:String)=>{  
+  val itemsForUpdate = (key:String)=>{  
 	  val head = key.split("\\.",1)(0)
-	  store.from(head).takeWhile(_._1.startsWith(head)).filter(_._2.isDefined).map {case (k, Some(v))=>(k,v)}
+	  store.from(head).takeWhile(_._1.startsWith(head)).filter(_._2.isDefined).map((x)=>(x._1, x._2.get))
   }
 
   val server = new StoreServer(9999)
@@ -53,9 +53,9 @@ class Xushi {
           case c: CMD => c match {
             case ADD(key, v) => add(key, v)
             case LISTEN(key) => {
-              peers = peers + ((conn, peers.get(conn).getOrElse(List()).::(key)))
-              getAllItemsFromStore(key).foreach(send(conn))          
-              }
+              peers = peers + ((conn, key :: peers.get(conn).getOrElse(List())))
+              itemsForUpdate(key).foreach(send(conn))          
+            }
           }
           case _=>
         }
@@ -71,12 +71,7 @@ class Xushi {
 
 object Xushi {
   def main(args: Array[String]) {
- //   var t = new TreeMap[String, Int]
- //   t = t + ("a" -> 1) + ("b"->2) + ("a.1"->3) + ("a.2"->4) + ("a.2.t"->5)+("b.1"->6)
- //   t.takeWhile(_._1.startsWith("b")).foreach(println _)
- val a = new Xushi;
-    // a.peers = a.peers + ("a" -> List("key1", "key2")) + ("b" -> List("key1.key6", "key2.key5"))
-    //a.add("key1.key6.k1.2.34.5.6.778.fsfg.sd.er", 23)
+    val a = new Xushi;
     a.init
   }
 }
