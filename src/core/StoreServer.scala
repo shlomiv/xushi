@@ -9,6 +9,8 @@ import com.esotericsoftware.kryonet.Listener
 import com.esotericsoftware.kryonet.Server
 import com.esotericsoftware.kryo._
 import scala.collection.immutable.TreeMap
+import java.util.concurrent.atomic.AtomicInteger
+import scala.collection.immutable.HashMap
 
 abstract class Store[A](val port: Int) {
   val kryi = new Kryo
@@ -17,12 +19,17 @@ abstract class Store[A](val port: Int) {
     def register(k: Kryo) {
       k.register(classOf[ADD], new ADDSerializer)
       k.register(classOf[LISTEN], new LISTENSerializer)
+      k.register(classOf[UNLISTEN], new UNLISTENSerializer)
       k.register(classOf[DEL], new DELSerializer)
     }
 
     class LISTENSerializer extends Serializer[LISTEN] {
       override def read(kryo: Kryo, input: Input, t: Class[LISTEN]): LISTEN = LISTEN(input.readString())
       override def write(kryo: Kryo, output: Output, v: LISTEN) = output.writeString(v.key)
+    }
+    class UNLISTENSerializer extends Serializer[UNLISTEN] {
+      override def read(kryo: Kryo, input: Input, t: Class[UNLISTEN]): UNLISTEN = UNLISTEN(input.readString())
+      override def write(kryo: Kryo, output: Output, v: UNLISTEN) = output.writeString(v.key)
     }
     class DELSerializer extends Serializer[DEL] {
       override def read(kryo: Kryo, input: Input, t: Class[DEL]): DEL = DEL(input.readString())
@@ -44,9 +51,10 @@ abstract class Store[A](val port: Int) {
 }
 
 abstract class CMD
-case class ADD(key: String, v: Any) extends CMD
-case class DEL(key: String) extends CMD
-case class LISTEN(key: String) extends CMD
+	case class ADD(key: String, v: Any) extends CMD
+	case class DEL(key: String) extends CMD
+	case class LISTEN(key: String) extends CMD
+	case class UNLISTEN(key:String) extends CMD
 
 class StoreConnection extends Connection
 
@@ -88,6 +96,8 @@ class StoreClient(port: Int) extends Store(port) {
 }
 
 object StoreServerTester {
+  val client = new StoreClient(9999)
+	
   def main(args: Array[String]) {
     //	  val StoreServer = new StoreServer(1234)
     //	  StoreServer.accept()
@@ -95,7 +105,6 @@ object StoreServerTester {
     var listeners = new TreeMap[String, List[ScalaObject]]
     //var listeners = new 
 
-    val client = new StoreClient(9999)
 
     client.connect()
 
@@ -107,19 +116,62 @@ object StoreServerTester {
       override def received(c: Connection, obj: Object) {
         obj match {
           case c: CMD => c match {
-            case ADD(key, v) => println(key + " " + v)
+            case ADD(key, v) => 
+              diceKey(key).foreach{ (k)=>
+	              val l = disptcher.get(k)
+	              l.foreach(_ foreach (_._2(key, v)))
+              }
           }
           case _ =>
         }
       }
     })
 
+    def diceKey(key:String)=key.split("\\.").inits.filterNot(_.isEmpty).map((x) => x reduce (_.concat(".") ++ _)).toStream.reverse
+  
+    
+   /* client.client.sendTCP(new LISTEN("bss"))
     client.client.sendTCP(new LISTEN("bss"))
+    client.client.sendTCP(new LISTEN("bss"))
+    client.client.sendTCP(new UNLISTEN("bss"))
+    client.client.sendTCP(new LISTEN("bss"))
+    client.client.sendTCP(new UNLISTEN("bss"))
+    client.client.sendTCP(new UNLISTEN("bss"))
+    client.client.sendTCP(new UNLISTEN("bss"))
     client.client.sendTCP(new LISTEN("ass.1.3"))
     client.client.sendTCP(new ADD("bss.1.2.3.4", 45))
     client.client.sendTCP(new ADD("ass.1.2.3.4", 45))
     client.client.sendTCP(new ADD("ass.1.3.3.4", 45))
     client.client.sendTCP(new LISTEN("ass"))
-
+*/
+   // Thread.sleep(3000)
+    //onChange("bss.3") {(x,y)=>println ("1 " + x + " -> " + y)}
+    //onChange("bss.3.2") {(x,y)=>println ("2 "+x + " -> " + y)}
+    val i = onChange("bss") {(x,y)=>println ("3 "+x + " -> " + y)}
+    Thread.sleep(3000)
+    client.client.sendTCP(new ADD("bss.1.2.3.3", 64))
+    client.client.sendTCP(new ADD("bss.2.2.3.3", 64))
+    client.client.sendTCP(new ADD("bss.3.2.3.3", 64))
+    stop(i)
+    client.client.sendTCP(new ADD("bss.3.3.3.3", 64))
+    client.client.sendTCP(new ADD("bss.3.3.3.4", 64))
+    client.client.sendTCP(new ADD("bss.1.2.3.3", 64))
+    Thread.sleep(5000000)
+  }
+  
+  val ai = new AtomicInteger(0)
+  var disptcher = new HashMap[String, HashMap[String, (String, Any)=>Unit]]
+  val onChange = (key : String) => (e:(String, Any)=>Unit) => {
+	val uniqueKey = key + "%" + ai.getAndIncrement()
+	disptcher = disptcher + ((key, disptcher.get(key).getOrElse(new HashMap) + ((uniqueKey, e))))
+	client.client.sendTCP(new LISTEN(key))
+    uniqueKey
+  }
+  val stop = (lid:String)=>{
+    val key = lid.split("%",2)(0);
+    disptcher = disptcher + ((key, disptcher.get(key).getOrElse(new HashMap) - lid))
+    println (disptcher)
+    client.client.sendTCP(new UNLISTEN(key))
+    Unit
   }
 }

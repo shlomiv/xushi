@@ -25,14 +25,11 @@ class Xushi {
   val send = (to: StoreConnection)=>(x:(String, Any))=> x match {
     case (key, v) => {
     	println("sending to " + to.getID() + " " + key + " " + v)
-    	to.sendTCP(new ADD(key, v))
+    	to sendTCP (new ADD(key, v))
     }
   } 
     
-  val itemsForUpdate = (key:String)=>{  
-	  val head = key.split("\\.",1)(0)
-	  store.from(head).takeWhile(_._1.startsWith(head)).filter(_._2.isDefined).map((x)=>(x._1, x._2.get))
-  }
+  val itemsForUpdate = (key:String)=>store.from(key).takeWhile(_._1.startsWith(key)).filter(_._2.isDefined).map((x)=>(x._1, x._2.get))
 
   val server = new StoreServer(9999)
 
@@ -47,6 +44,9 @@ class Xushi {
         val conn = c.asInstanceOf[StoreConnection]
         peers = peers - conn
       }
+      
+      def removeFirst[A](num: A, list: List[A]) = list diff List(num)
+      
       override def received(c: Connection, obj: Object) {
         val conn = c.asInstanceOf[StoreConnection]
         obj match {
@@ -56,10 +56,13 @@ class Xushi {
               peers = peers + ((conn, key :: peers.get(conn).getOrElse(List())))
               itemsForUpdate(key).foreach(send(conn))          
             }
+            case UNLISTEN(key)=>{
+              val v = peers.get(conn)
+              v.foreach{(x)=>peers = peers + ((conn, removeFirst(key, x)))}
+            }
           }
           case _=>
         }
-
       }
     })
   }
